@@ -8,13 +8,13 @@ def main():
     """Parse arguments and then run the rest of the program according to them."""
     parser = argparse.ArgumentParser()
     parser.add_argument("regions", type=argparse.FileType('r'), 
-                        help="The filepath to read a list of regions comprising 
+                        help="The filepath to read a list of regions comprising\ 
                               the map from.")
     parser.add_argument("borders", type=argparse.FileType('r'), 
-                        help="The filepath to read a list of borders describing 
+                        help="The filepath to read a list of borders describing\ 
                               the relationships between regions from.") 
     parser.add_argument("--check", action="store_true", 
-                        help="Check the given map for consistency and print test 
+                        help="Check the given map for consistency and print test\ 
                               results.")
     arguments = parser.parse_args()
     regions = json.load(arguments.regions)
@@ -30,10 +30,12 @@ class mapmaker():
     # TODO: Define a text file format to import such descriptions from.
     def make_map(description):
         board = {}
-        region_id = 0
         for region in description:
-            mapmaker.add_region(board, region_id, region[0], 
-                                region[1], region[2], region[3], region[4])
+            region_id = region[0]
+            region_values = region[1]
+            board = mapmaker.add_region(board, region_id, region_values[0], 
+                                region_values[1], region_values[2], region_values[3], region_values[4])
+        return board
 
     def add_region(board, region_id, name, land, sea, supply, neighbors):
         region = {}
@@ -55,13 +57,15 @@ class mapmaker():
         borders: A list of dictionaries with the name of a region as their key and the regions which border it in a list as its value.
         """
         print("Test One: Duplicate Checking:")
-        region_names = set()
-        for region in regions:
-            previous = region_names.copy()
-            region_names.add(region[0])
-            if len(previous) == len(region_names):
-                raise ValueError("Region " + str(region) + " is duplicated in the list of regions.")
+        region_ids = set()
+        for region_id in regions:
+            if region_id in region_ids:
+                raise ValueError("Region " + str(regions[region_id][0]) + " is duplicated in the list of regions.")
+            else:
+                region_ids.add(region)
+                
         print("Test Two: Spell Checking and Name Consistency:")
+        region_names = [region[0] for region in list(regions.values())]
         for border in borders:
             names = borders[border][:]
             if border in names:
@@ -123,6 +127,7 @@ class mapmaker():
         -expansion in the source files.
         """
         for region in regions:
+            region = regions[region]
             if len(region) < 2 or len(region) > 4: # Rule zero
                 try:
                     raise ValueError("Region " + region[0] + " has only its name as its elements.")
@@ -131,20 +136,22 @@ class mapmaker():
             elif 'coast' in region[0].lower(): 
                 if len(region) > 3: # Rule two
                     raise ValueError("Length of coast " + region[0] + " is invalid.")
-                elif region[1] == True: # Rule four
+                elif region[1]: # Rule four
                     raise ValueError("Coast " + region[0] + " has a land value of 'true'")
                 elif len(region) == 2: # Rule five, other cases covered by rule zero
                     raise ValueError("Coast " region[0] " only has one truth value as an element.")
             elif len(region) > 2: #Necessary to safely test rule one and set up rule three
-                if region[1] == False: # Rule one
-                    raise ValueError("Region " + region[0] + " has truth values after having 'land' set to false.")
-                elif region[1] == True and len(region) == 3: # Rule three
-                    raise ValueError("Region " + region[0] + " has a land value of 'true' but only two truth values.")
-            elif 'coast' in region[0].lower() and region[1] == False and region[2]:
+                if region[1] is False: # Rule one
+                    raise ValueError("Region " + region[0] + " has truth values \
+                                      after having 'land' set to false.")
+                elif region[1] and len(region) == 3: # Rule three
+                    raise ValueError("Region " + region[0] + " has a land value \
+                                      of 'true' but only two truth values.")
+            elif 'coast' in region[0].lower() and region[1] is False and region[2]:
                 print(region[0] + " is a coast.")
-            elif region[1] == True and region[2] and region[3]:
+            elif region[1] and len(region) == 4:
                 print(region[0] + " is a province.")
-            elif region[1] == False and len(region) == 2:
+            elif region[1] is False and len(region) == 2:
                 print(region[0] + " is a sea.")
             else:
                 print("Something strange happened with " + region[0] + ".")
@@ -165,8 +172,30 @@ class mapmaker():
 
         In either case it is left up to a human as to how to correct the error.
         """
+        def is_sea_coastal_coast(region):
+            """Verifies that a given region is a sea, coast or coastal region."""
+            if region[1] is False and len(region) == 2:
+                return True  
+            elif region[1] and region[2]:
+                return True
+            elif 'coast' in region[0].lower() and region[1] is False and region[2]:
+                return True
+            else:
+                return False
+        def is_sea(region):
+            """Verifies that a given region is a sea."""
+            if 'coast' not in region[0] and region[1] is False and len(region) == 2:
+                return True
+            else:
+                return False
         for sea in borders:
-            
+            if is_sea(regions[sea]) is False:
+                raise ValueError(str(regions[sea]) + " is listed as a sea in with \
+                                                       borders when it is not coded 
+                                                       as a sea in regions.")
+            sea_borders = borders[sea]
+            for region in sea_borders:
+                
 # If A borders B and B borders C and C borders A, ABC are all mutually connected.
 
 # If a region is coastal, it necessarily borders at least one sea region.
