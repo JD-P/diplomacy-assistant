@@ -142,11 +142,11 @@ class mapmaker():
                     raise ValueError("Coast " region[0] " only has one truth value as an element.")
             elif len(region) > 2: #Necessary to safely test rule one and set up rule three
                 if region[1] is False: # Rule one
-                    raise ValueError("Region " + region[0] + " has truth values \
-                                      after having 'land' set to false.")
+                    raise ValueError("Region " + region[0] + " has truth values" \
+                                      " after having 'land' set to false.")
                 elif region[1] and len(region) == 3: # Rule three
-                    raise ValueError("Region " + region[0] + " has a land value \
-                                      of 'true' but only two truth values.")
+                    raise ValueError("Region " + region[0] + " has a land value" \
+                                      " of 'true' but only two truth values.")
             elif 'coast' in region[0].lower() and region[1] is False and region[2]:
                 print(region[0] + " is a coast.")
             elif region[1] and len(region) == 4:
@@ -190,12 +190,16 @@ class mapmaker():
                 return False
         for sea in borders:
             if is_sea(regions[sea]) is False:
-                raise ValueError(str(regions[sea]) + " is listed as a sea in with \
-                                                       borders when it is not coded 
-                                                       as a sea in regions.")
+                raise ValueError(str(regions[sea]) + " is listed as a sea with " \
+                                     "borders when it is not coded as a sea in " \
+                                     "regions.")
             sea_borders = borders[sea]
             for region in sea_borders:
-                
+                if is_sea_coastal_coast(region) is False:
+                    raise ValueError(str(region) + " is in the borders of " \
+                                         borders[sea] + "when it is not coded as" \
+                                         "a sea, coast, or coastal region."
+                                         
 # If A borders B and B borders C and C borders A, ABC are all mutually connected.
 
 # If a region is coastal, it necessarily borders at least one sea region.
