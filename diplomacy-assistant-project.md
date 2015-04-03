@@ -77,6 +77,7 @@ Ellipsis imply that a token or pattern can be repeated indefinitely.
 
 An asterick to the *right* of an object means that token is optional, and within
 context that anything which might come after that token may also be optional.
+The asterick should not be typed.
 
 Regions:
 --------
@@ -203,3 +204,180 @@ b - A marker to say that this is a border statement.
 the order of the relation does not matter since it applies in both directions.
 
 Example: b, [0]:[1]
+
+Region Types:
+-------------
+
+There are several region types which are represented as integers. In earlier
+version of the program a series of true/false values were used to represent
+regions with an entire consistency checker that could point out any kind of
+error in these values. Since integers are themselves bitmasks representing a
+series of true/false values, we can obviate the need for this transcription
+verifier and eliminate entire classes of errors by only restricting ourselves
+to that subset of bitmasks which represent valid regions. Without further ado:
+
+There are four kinds of province in Diplomacy:
+
+* Inland
+
+* Coastal
+
+* Seas
+
+* Coasts
+
+Inland pieces are those which are only bordered by non-seas.
+
+Coastal pieces are those which are land bordered by a sea.
+
+Seas are non-land.
+
+Coasts are a special case of coastal pieces where a province is divided into 
+multiple 'coasts' that prevent ships docked at the coast from making impossible
+geographic moves. This means that there are at least three pieces in the province.
+At least two coasts, and an inland province.
+
+Of these, Inland, Coastal and Coast provinces can be supply centers, which means
+you need a seperate identifier for pieces which are supply centers and pieces 
+which are not. ((3 * 2) + 1) for a total of seven.
+
+The different types of province are as follows:
+
+0: Sea
+
+1: Inland
+
+2: Coastal
+
+3: Coast
+
+4: Inland Supply
+
+5: Coastal Supply
+
+6: Coast Supply
+
+Map Storage Format:
+-------------------
+
+As the user types in the map using the codes and statements above the program
+translates it into an internal representation which is stored as JSON. This
+representation has two major sections, the first being a list of regions and
+their types. The second is each border pair describing the geography of the map.
+
+The top level data structure is a dictionary containing the regions and the 
+borders. 
+
+{
+	regions:
+		{
+			region_id:[region_name, region_nick, region_type],
+			...
+		}
+	borders:
+		{
+			region_id:[comma seperated list of region id's that
+				   border the region],
+			...
+		}
+}
+
+The values of regions and borders are key value pairs where the keys are region 
+ID's and the values are information about the region. In the case of regions the
+information is the metadata for the region associated with that id. In the case
+of borders the information is the region id for every region that borders the 
+region identified by the key.
+
+Game Description Format:
+------------------------
+
+Beyond a description of the map, in order to resolve moves and help a player
+plan their game, the program needs a description of the players involved and
+their holdings and pieces on the board. Towards this purpose there are three
+more statements available to describe these. They are:
+
+* Player - Describes a player and their faction
+
+* Holding - Describes what provinces currently belong to a player.
+
+* Unit - Describes a unit on the board controlled by a player.
+
+The syntax and detailed use of each is as follows:
+
+Player:
+-------
+
+p, [player_name]:[player_faction]:*[nickname]
+
+p, - A marker to say that this is a player statement
+
+[player_name] - The name of the player, examples include "John" or "Emily".
+	        It should be typed without quotation marks or extraneous whitespace
+		between the first non-whitespace character in the name and the colon.
+
+[player_faction] - The *unique* name of the faction that the player is controlling.
+
+[nickname] - An optional *unique* nickname to display for the player when displaying
+	     certain information about them in dialogues.
+
+Example: p, Peter:England
+
+Example 2: p, John:Russia:Jon
+
+Example 3: p, Emily:Italy:Itl
+
+Holding:
+--------
+
+h, [player name/faction/nickname]:[list of region names/nicks/id's]
+
+h, - A marker to say that this is a holding statement.
+
+[player name/faction/nickname] - The name, faction or nickname of the player
+			         to which the regions belong to. 
+
+[list of region name/nicks/id's] - The regions which the statement says belong
+      	 			   to the player.
+
+It should be noted that a holding statement does not have to describe every
+holding of a player in one line. Multiple holding statements may be used to
+describe the provinces controlled by a player. This may be useful if you would
+like to describe them all using their full names as opposed to ID's or nicks.
+
+Example: h, John:[Stp, Mos, Sev, War]
+
+Example 2: 
+
+John:[Saint Petersburg, Moscow]
+John:[Sevestapol, Warsaw]
+
+Unit:
+-----
+
+u, [player name/faction/nickname]:[region name/nick/id],[unit type]
+
+u, - A marker to say that this is a unit statement.
+
+[player name/faction/nickname] - The name, faction or nickname of the player
+			         to which the unit belongs to.
+
+[region name/nick/id] - The name, nick or id of the region the unit is stationed
+		        at.
+
+[unit type] - The type of unit occupying the region. The two kinds of units are
+      	      fleets and armies. Fleets cannot occupy inland spaces and armies
+	      cannot occupy seas or coasts. (Though it should be noted that a 
+	      coast is not the same thing as a *coastal* province, which an army
+	      can occupy just fine.) An army has a type of zero and a fleet has
+	      a type of one.
+
+Example: u, Emily:Nap,1
+
+Example 2: u, Russia:Sev, 1
+
+Example 3: u, Peter:Lvp, 0
+
+
+The player statements should be made first, then the holding statements, and then
+the unit statements. All three of these should be made after the region, collection
+and border statements.
