@@ -4,18 +4,20 @@ import argparse
 
 import json
 
+import string
+
 def main():
     """Parse arguments and then run the rest of the program according to them."""
     parser = argparse.ArgumentParser()
     parser.add_argument("regions", type=argparse.FileType('r'), 
-                        help="The filepath to read a list of regions comprising\ 
-                              the map from.")
+                        help="The filepath to read a list of regions comprising" \ 
+                             " the map from.")
     parser.add_argument("borders", type=argparse.FileType('r'), 
-                        help="The filepath to read a list of borders describing\ 
-                              the relationships between regions from.") 
+                        help="The filepath to read a list of borders describing" \ 
+                             " the relationships between regions from.") 
     parser.add_argument("--check", action="store_true", 
-                        help="Check the given map for consistency and print test\ 
-                              results.")
+                        help="Check the given map for consistency and print test" \ 
+                             " results.")
     arguments = parser.parse_args()
     regions = json.load(arguments.regions)
     borders = json.load(arguments.borders)
@@ -25,45 +27,92 @@ def main():
     else:
         
 
-class mapmaker():
+class MapMaker():
     """Import a set of region descriptions to make a map."""
-    # TODO: Define a text file format to import such descriptions from.
-    def make_map(description):
+    def make_map(cls, description):
         board = {}
         for region in description:
             region_id = region[0]
             region_values = region[1]
-            board = mapmaker.add_region(board, region_id, region_values[0], 
+            board = cls.add_region(cls, board, region_id, region_values[0], 
                                 region_values[1], region_values[2], region_values[3], region_values[4])
         return board
 
-    def add_region(board, region_id, name, land, sea, supply, neighbors):
+    def add_region(cls, board, region_id, name, nickname, region_type):
         region = {}
         region['name'] = name
-        region['land'] = land
-        if sea:
-            region['sea'] = sea
-        if supply:
-            region['supply'] = supply
-        region['neighbors'] = neighbors
+        region['nick'] = nickname
+        region['type'] = region_type
         board[region_id] = region
         return board
     
-    def consistency_checker(regions, borders):
-        """Takes a list of regions and a list of borders, checking for anomalies.
+    def input_map(cls):
+        """Interface to put a map into memory as a series of statements and
+        translate into an internal representation."""
+        regions = {}
+        borders = {}
+        history = []
+        print("Start inserting statements now.")
+        while history[-2:] is not ["\n","\n"]:
+            statement = input(">")
+            tokens = cls.parse_statement(statement)
+            if tokens:
+                statement_type = tokens[0]
+            else:
+                continue
+            if statement_type = "r":
+
+    def parse_statement(cls, statement):
+        """Parse a statement given in map descripton or game description format
+        and return its internal representation."""
+        split = statement.split(",", 1)
+        statement_type = split[0]
+        universal = split[1]
+        if statement_type == "r":
+            try:
+                region_id = int(universal.split(":")[0])
+            except ValueError:
+                print("Invalid Region id")
+                return False
+            metadata = universal.split(":")[1]
+            elements = metadata.split(",")
+            try:
+                name = elements[0].strip(string.whitespace)
+            except IndexError:
+                print("Invalid region name.")
+                return False
+            try:
+                region_type = elements[1].strip(string.whitespace)
+            except IndexError:
+            nickname = elements[2].strip(string.whitespace)
+            return
+    def consistency_checker(cls, regions, borders):
+        """Takes a dict of regions and a dict of borders, checking for anomalies.
 
         Keyword Arguments:
-        regions: A list containing a series of lists describing regions on the board.
-        borders: A list of dictionaries with the name of a region as their key and the regions which border it in a list as its value.
+        regions: A dictionary with region id's for keys containing lists with the 
+                 metadata describing the region.
+        borders: A dictionary with region id's for keys and the id's of regions 
+                 which border it in a list as its value.
         """
         print("Test One: Duplicate Checking:")
-        region_ids = set()
+        region_components = set()
         for region_id in regions:
-            if region_id in region_ids:
-                raise ValueError("Region " + str(regions[region_id][0]) + " is duplicated in the list of regions.")
+            region_name = regions[region_id]['name']
+            region_nick = regions[region_id]['nick']            
+            if region_id in region_components:
+                raise ValueError("Region id " + str(region_id) + 
+                                 " is duplicated in the list of regions.")
+            elif region_name in region_components:
+                raise ValueError("Region name " + str(regions[region_id]['name']) 
+                                 + " is duplicated in the list of regions.")
+            elif region_nick in region_components:
+                raise ValueError("Region nick " + str(regions[region_id]['nick'])
+                                 + " is duplicated in the list of regions.")
             else:
-                region_ids.add(region)
-                
+                region_components.add(region_id)
+                region_components.add(region_name)
+                region_components.add(region_nick)
         print("Test Two: Spell Checking and Name Consistency:")
         region_names = [region[0] for region in list(regions.values())]
         for border in borders:
@@ -73,88 +122,36 @@ class mapmaker():
             names.append(border)
             for name in names:
                 if name not in region_names:
-                    raise ValueError("Region name " + "'" + name + "'" + " in " + border + " is in conflict with its counterpart in the list of regions.")
+                    raise ValueError("Region name " + "'" + name + "'" + " in " 
+                                     + border + " is in conflict with its " \
+                                     "counterpart in the list of regions.")
         print("Test Three: Data Consistency in Regions:")
         """This test follows a set of rules to determine if any of the countries are 
         malformed within the context of the data structures used to represent regions.
         This test does *not* determine if a regions information is inaccurate in its
         values, but if the region as written is allowed to exist at all.
 
-        There are 6 rules that this test uses to detect errors of this kind, they are:
-        0. If a region has no elements, a length of one or a length of over four it
-        is invalid.
-        1. If a region does not have 'coast' in the name and it has a truth value for
-        anything after having 'land' set to false it is invalid.
-        2. If a region has 'coast' in the name and any truth values after the first two
-        it is invalid.
-        3. If a region has a first truth value of true and two or less truth values 
-        it is invalid.
-        4. If a region has 'coast' in the name and land is set to 'true' it is invalid.
-        5. If a region has 'coast' in the name and only one truth value after it is
-        invalid.
-
-        Valid regions have the following possible values:
-        1. True, [True OR False], [True OR False]
-        2. False
-        3. If Coast is True (otherwise invalid): False, [True OR False] 
-        
-        There are fourteen possible combinations of three truth values if one can
-        remove values to create subsets. Whether or not a name has 'coast' in it is 
-        also a true or false value, but does not count as a 'truth value' for the rules
-        above. Giving us thirty possible values. We can be sure that this set of rules 
-        and recognizers is complete if it covers 30 unique cases and the empty set
-        ('True False or None' is in fact ternary, 3^4 is 81 but there are 31 *unique*
-        values :
-        Values with an asterick (*) next to them are optional, we calculate them
-        combinatorically as being ternary.
-
-        Rule zero covers three cases: [*[T or F]], [[T OR F], [T OR F], [T OR F], 
-        [T OR F], [T OR F]...]
-        Rule one covers six cases: [F, F, [T OR F], *[T OR F]]
-        Rule two covers eight cases: [T, [T OR F], [T OR F], [T OR F]] (Overlaps four with rule nine)
-        Rule three covers three cases: [F, T, *[T OR F]]
-        Rule four covers nine cases: [T, T, *[T OR F], *[T OR F]] (Overlaps two with itself.)
-        Rule five covers two cases: [T, [T OR F]] (One overlap with rule four)
-        The first valid region recognizer has four cases: [F, T, [T OR F], [T OR F]]
-        The second valid region recognizer has one case: [F, F]
-        The third valid region recognizer has two cases: [T, F, [T OR F]]
-        (3 + 6 + 8 + 3 + 9 + 2 + 4 + 1 + 2) - (4 + 2 + 1) = 31
-
-        One way that this could be shown to be an incorrect proof of covering all
-        cases is if you can show that any of the cases covered by one rule or recognizer
-        overlap with cases covered by another rule or recognizer, thus making them not
-        unique. You can play with the tools I used to generate this proof under truth
-        -expansion in the source files.
+        There are 2 rules that this test uses to detect errors of this kind, they are:
+        0. If a region has no elements, a length other than three it is invalid.
+        1. If a region does not have a type value between zero and six it is invalid.        
         """
         for region in regions:
             region = regions[region]
-            if len(region) < 2 or len(region) > 4: # Rule zero
+            if len(region) is not 3:
                 try:
-                    raise ValueError("Region " + region[0] + " has only its name as its elements.")
+                    raise ValueError("Region " + region['name'] + " has only its name " \
+                                      "as its elements or is missing a nickname" \
+                                      " or only has a nickname.")
                 except ValueError:
                     raise ValueError("A given region has no elements.") 
-            elif 'coast' in region[0].lower(): 
-                if len(region) > 3: # Rule two
-                    raise ValueError("Length of coast " + region[0] + " is invalid.")
-                elif region[1]: # Rule four
-                    raise ValueError("Coast " + region[0] + " has a land value of 'true'")
-                elif len(region) == 2: # Rule five, other cases covered by rule zero
-                    raise ValueError("Coast " region[0] " only has one truth value as an element.")
-            elif len(region) > 2: #Necessary to safely test rule one and set up rule three
-                if region[1] is False: # Rule one
-                    raise ValueError("Region " + region[0] + " has truth values" \
-                                      " after having 'land' set to false.")
-                elif region[1] and len(region) == 3: # Rule three
-                    raise ValueError("Region " + region[0] + " has a land value" \
-                                      " of 'true' but only two truth values.")
-            elif 'coast' in region[0].lower() and region[1] is False and region[2]:
-                print(region[0] + " is a coast.")
-            elif region[1] and len(region) == 4:
-                print(region[0] + " is a province.")
-            elif region[1] is False and len(region) == 2:
-                print(region[0] + " is a sea.")
+            elif region['type'] is in (3,6):
+                print(region['name'] + " is a coast.")
+            elif region['type'] is in (1,2,4,5):
+                print(region['name'] + " is inland or coastal.")
+            elif region['type'] is 0:
+                print(region['name'] + " is a sea.")
             else:
-                print("Something strange happened with " + region[0] + ".")
+                print("Something strange happened with " + region['name'] + ".")
         """This test tries to verify the integrity of region information through the
         bordering regions of seas supplied as part of the map description. Everything
         that borders a sea is necessarily a coastal region or itself a sea. Everything
@@ -174,38 +171,45 @@ class mapmaker():
         """
         def is_sea_coastal_coast(region):
             """Verifies that a given region is a sea, coast or coastal region."""
-            if region[1] is False and len(region) == 2:
-                return True  
-            elif region[1] and region[2]:
-                return True
-            elif 'coast' in region[0].lower() and region[1] is False and region[2]:
+            if region['type'] is not in (1,4):
                 return True
             else:
                 return False
+
         def is_sea(region):
             """Verifies that a given region is a sea."""
-            if 'coast' not in region[0] and region[1] is False and len(region) == 2:
+            if region['type'] is 0:
                 return True
             else:
                 return False
         for sea in borders:
+            
             if is_sea(regions[sea]) is False:
                 raise ValueError(str(regions[sea]) + " is listed as a sea with " \
                                      "borders when it is not coded as a sea in " \
                                      "regions.")
             sea_borders = borders[sea]
             for region in sea_borders:
+                region = regions[region]
                 if is_sea_coastal_coast(region) is False:
                     raise ValueError(str(region) + " is in the borders of " \
-                                         borders[sea] + "when it is not coded as" \
-                                         "a sea, coast, or coastal region."
-                                         
-# If A borders B and B borders C and C borders A, ABC are all mutually connected.
+                                         + borders[sea] + "when it is not coded as" \
+                                         "a sea, coast, or coastal region.")
+                else:
+                    continue
+        print("Testing finished, in so far as this program can discern the map is " \
+               "valid, but that does not actually guaruntee the map is correct.")
+        return True
+                            
 
-# If a region is coastal, it necessarily borders at least one sea region.
+class Diplomacy():
+    """Represents a diplomacy game and implements features such as resolving moves
+    and trying to figure out the optimal set of moves for a given player this turn."""
+    
+    def __init__(self, game_description):
+        
+        players = 
 
-# All regions bordering a sea are coastal.
+    def resolve(self, board, game_state, orders):
+        """Resolve given a board and a game state with orders for that board."""
 
-# If land is false a second element means it is a supply center coast.
-
-# Sea regions are only supply centers if they're a coast.        
